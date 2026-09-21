@@ -1,4 +1,4 @@
-const { load, WEEKDAY_NAMES } = require('./store');
+const { load, WEEKDAY_NAMES, MIN_YEAR, MAX_YEAR } = require('./store');
 const { ApiError, pickText } = require('./errors');
 const { offsetText } = require('./zones');
 
@@ -55,6 +55,34 @@ function dayOffsetText(dayOffset) {
   return `前 ${Math.abs(dayOffset)} 天`;
 }
 
+// 年份边界按整数年份判定，不看具体月日：开始年份与停止年份都算在可用范围内，
+// 也就是生效第一年的第一天与停止实行最后一年的最后一天都照常换算。
+// 三种越界分开标记，换算本身不因此失败，越界的档案只在结果里标成不可用
+function checkYearBoundary(zone, year) {
+  if (year < MIN_YEAR || year > MAX_YEAR) {
+    return {
+      available: false,
+      code: 'YEAR_OUT_OF_TOOL_RANGE',
+      reason: `超出工具支持的年份范围（${MIN_YEAR} 至 ${MAX_YEAR}）`,
+    };
+  }
+  if (year < zone.fromYear) {
+    return {
+      available: false,
+      code: 'YEAR_BEFORE_FROM',
+      reason: `早于档案生效年份（${zone.fromYear} 年起）`,
+    };
+  }
+  if (zone.toYear !== null && year > zone.toYear) {
+    return {
+      available: false,
+      code: 'YEAR_AFTER_TO',
+      reason: `晚于档案停止实行的年份（${zone.toYear} 年止）`,
+    };
+  }
+  return { available: true, code: '', reason: '' };
+}
+
 // 换算：先把输入时刻按来源时区的偏移折算成基准时刻，再逐个时区加上各自的偏移
 function convert(options) {
   const input = options && typeof options === 'object' ? options : {};
@@ -73,16 +101,37 @@ function convert(options) {
   const utcDate = new Date(utcMs);
 
   const results = data.zones.map((zone) => {
-    const localMs = utcMs + zone.offsetMinutes * 60000;
-    const local = new Date(localMs);
-    const dayOffset = Math.floor(localMs / DAY_MS) - baseDay;
-    const diffMinutes = zone.offsetMinutes - source.offsetMinutes;
-    return {
+    const boundary = checkYearBoundary(zone, date.year);
+    const base = {
       zoneId: zone.id,
       name: zone.name,
       displayName: zone.displayName,
       offsetMinutes: zone.offsetMinutes,
       offsetText: offsetText(zone.offsetMinutes),
+      usesDst: zone.usesDst,
+      isSource: zone.id === source.id,
+      available: boundary.available,
+      unavailableCode: boundary.code,
+      unavailableReason: boundary.reason,
+    };
+    if (!boundary.available) {
+      return {
+        ...base,
+        localDate: '',
+        localTime: '',
+        weekday: '',
+        dayOffset: null,
+        dayOffsetText: '',
+        diffMinutes: null,
+        diffText: '',
+      };
+    }
+    const localMs = utcMs + zone.offsetMinutes * 60000;
+    const local = new Date(localMs);
+    const dayOffset = Math.floor(localMs / DAY_MS) - baseDay;
+    const diffMinutes = zone.offsetMinutes - source.offsetMinutes;
+    return {
+      ...base,
       localDate: `${local.getUTCFullYear()}-${pad(local.getUTCMonth() + 1)}-${pad(local.getUTCDate())}`,
       localTime: `${pad(local.getUTCHours())}:${pad(local.getUTCMinutes())}`,
       weekday: WEEKDAY_NAMES[local.getUTCDay()],
@@ -90,8 +139,6 @@ function convert(options) {
       dayOffsetText: dayOffsetText(dayOffset),
       diffMinutes,
       diffText: diffText(diffMinutes),
-      usesDst: zone.usesDst,
-      isSource: zone.id === source.id,
     };
   });
 
@@ -100,10 +147,23 @@ function convert(options) {
     return a.name < b.name ? -1 : 1;
   });
 
+  // 跨天与时差统计只按可用档案算，越界档案没有换算结果，不参与统计
+  const usable = results.filter((item) => item.available);
+  const blocked = results
+    .filter((item) => !item.available)
+    .map((item) => ({
+      zoneId: item.zoneId,
+      name: item.name,
+      displayName: item.displayName,
+      code: item.unavailableCode,
+      reason: item.unavailableReason,
+    }));
+
   return {
     input: {
       date: date.text,
       time: time.text,
+      year: date.year,
       zoneId: source.id,
       zoneName: source.name,
       zoneDisplayName: source.displayName,
@@ -114,12 +174,21 @@ function convert(options) {
       date: `${utcDate.getUTCFullYear()}-${pad(utcDate.getUTCMonth() + 1)}-${pad(utcDate.getUTCDate())}`,
       time: `${pad(utcDate.getUTCHours())}:${pad(utcDate.getUTCMinutes())}`,
     },
+    boundary: {
+      minYear: MIN_YEAR,
+      maxYear: MAX_YEAR,
+      granularity: 'year',
+      granularityText: '按整数年份判定，开始年份与停止年份都算可用',
+    },
     zonesInScope: data.zones.length,
-    crossDayCount: results.filter((item) => item.dayOffset !== 0).length,
-    maxDiffMinutes: results.reduce((acc, item) => Math.max(acc, Math.abs(item.diffMinutes)), 0),
+    availableCount: usable.length,
+    unavailableCount: blocked.length,
+    blocked,
+    crossDayCount: usable.filter((item) => item.dayOffset !== 0).length,
+    maxDiffMinutes: usable.reduce((acc, item) => Math.max(acc, Math.abs(item.diffMinutes)), 0),
     results,
     convertedAt: new Date().toISOString(),
   };
 }
 
-module.exports = { convert, validateDate, validateTime, diffText, dayOffsetText };
+module.exports = { convert, validateDate, validateTime, diffText, dayOffsetText, checkYearBoundary };

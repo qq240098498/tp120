@@ -109,7 +109,9 @@
           <button type="button" id="convert-run">换算一遍</button>
         </div>
       </div>
+      <p class="convert-note">可用性按整数年份判定，不看具体月日：开始年份与停止年份都算在可用范围内，生效第一年的 1 月 1 日与停止实行最后一年的 12 月 31 日都照常换算。早于档案生效年份、晚于档案停止实行年份的档案在结果里标为不可用并写明原因，不影响其余档案换算；日期超出工具支持范围（<span id="convert-range">1900 至 2100</span> 年）时，全部档案一并标为不可用。</p>
       <p class="convert-meta" id="convert-meta">还没有换算过，填好日期、时刻与来源时区点右侧按钮</p>
+      <p class="convert-blocked hidden" id="convert-blocked"></p>
       <div class="table-wrap">
         <table class="grid">
           <thead>
@@ -123,6 +125,7 @@
               <th>偏移</th>
               <th>与来源时区相差</th>
               <th>夏令时</th>
+              <th>可用性</th>
             </tr>
           </thead>
           <tbody id="convert-body"></tbody>

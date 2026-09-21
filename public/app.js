@@ -264,9 +264,51 @@ async function runConvert() {
 }
 
 function renderConvert(result) {
-  el('convert-meta').textContent = `来源 ${result.input.zoneName}（${result.input.zoneDisplayName}，${result.input.offsetText}）的 ${result.input.date} ${result.input.time}，换算时刻 ${formatTime(result.convertedAt)}；参与换算的档案 ${result.zonesInScope} 条，与来源不同天的有 ${result.crossDayCount} 条，最大时差 ${Math.floor(result.maxDiffMinutes / 60)} 小时 ${result.maxDiffMinutes % 60} 分`;
+  const unavailableCount = result.unavailableCount || 0;
+  const availableCount = result.availableCount === undefined
+    ? result.zonesInScope - unavailableCount
+    : result.availableCount;
+  let meta = `来源 ${result.input.zoneName}（${result.input.zoneDisplayName}，${result.input.offsetText}）的 ${result.input.date} ${result.input.time}，换算时刻 ${formatTime(result.convertedAt)}；参与换算的档案 ${result.zonesInScope} 条`;
+  if (unavailableCount > 0) meta += `，其中不可用 ${unavailableCount} 条`;
+  if (availableCount > 0) {
+    meta += `，${unavailableCount > 0 ? '可用档案中' : ''}与来源不同天的有 ${result.crossDayCount} 条，最大时差 ${Math.floor(result.maxDiffMinutes / 60)} 小时 ${result.maxDiffMinutes % 60} 分`;
+  } else {
+    meta += '，没有可换算的档案';
+  }
+  el('convert-meta').textContent = meta;
+
+  if (result.boundary) {
+    el('convert-range').textContent = `${result.boundary.minYear} 至 ${result.boundary.maxYear}`;
+  }
+
+  // 被年份边界卡住的档案逐条列出来，写清是哪一条、被哪条规则卡住
+  const blocked = result.blocked || [];
+  const blockedBox = el('convert-blocked');
+  if (blocked.length > 0) {
+    blockedBox.textContent = `本次不可用：${blocked.map((item) => `${item.name}（${item.displayName}）${item.reason}`).join('；')}`;
+    blockedBox.classList.remove('hidden');
+  } else {
+    blockedBox.textContent = '';
+    blockedBox.classList.add('hidden');
+  }
+
   const body = el('convert-body');
-  body.innerHTML = result.results.map((item) => `<tr class="${item.isSource ? 'source-row' : ''}">
+  body.innerHTML = result.results.map((item) => {
+    if (!item.available) {
+      return `<tr class="${item.isSource ? 'source-row ' : ''}unavailable-row">
+        <td class="mono">${escapeHtml(item.name)}</td>
+        <td>${escapeHtml(item.displayName)}</td>
+        <td class="mono">—</td>
+        <td class="mono">—</td>
+        <td>—</td>
+        <td>—</td>
+        <td class="mono">${escapeHtml(item.offsetText)}</td>
+        <td>—</td>
+        <td>${item.usesDst ? '有规则' : '—'}</td>
+        <td class="avail-cell"><span class="tag bad">不可用</span> ${escapeHtml(item.unavailableReason)}</td>
+      </tr>`;
+    }
+    return `<tr class="${item.isSource ? 'source-row' : ''}">
       <td class="mono">${escapeHtml(item.name)}</td>
       <td>${escapeHtml(item.displayName)}</td>
       <td class="mono">${escapeHtml(item.localDate)}</td>
@@ -276,7 +318,9 @@ function renderConvert(result) {
       <td class="mono">${escapeHtml(item.offsetText)}</td>
       <td>${escapeHtml(item.diffText)}</td>
       <td>${item.usesDst ? '有规则' : '—'}</td>
-    </tr>`).join('');
+      <td><span class="tag off">可用</span></td>
+    </tr>`;
+  }).join('');
   el('convert-empty').classList.toggle('hidden', result.results.length > 0);
 }
 

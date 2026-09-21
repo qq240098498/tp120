@@ -203,6 +203,26 @@ button.link.danger {
   font-size: 12.5px;
 }
 
+.convert-note {
+  margin: 0 0 10px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #f9fafc;
+  color: var(--ink-soft);
+  font-size: 12.5px;
+}
+
+.convert-blocked {
+  margin: 0 0 10px;
+  padding: 8px 12px;
+  border: 1px solid var(--warn-line);
+  border-radius: 6px;
+  background: var(--warn-bg);
+  color: #8a5a00;
+  font-size: 12.5px;
+}
+
 .table-wrap {
   overflow-x: auto;
 }
@@ -261,6 +281,11 @@ tr.source-row td {
   background: var(--accent-soft);
 }
 
+tr.unavailable-row td {
+  background: #fafbfc;
+  color: var(--ink-soft);
+}
+
 .tag {
   display: inline-block;
   padding: 1px 6px;
@@ -281,6 +306,16 @@ tr.source-row td {
 .tag.warn {
   background: var(--warn-bg);
   color: #8a5a00;
+}
+
+.tag.bad {
+  background: #fdeeee;
+  color: var(--danger);
+}
+
+td.avail-cell {
+  min-width: 200px;
+  white-space: normal;
 }
 
 .empty-tip {
