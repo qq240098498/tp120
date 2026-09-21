@@ -264,9 +264,29 @@ async function runConvert() {
 }
 
 function renderConvert(result) {
-  el('convert-meta').textContent = `来源 ${result.input.zoneName}（${result.input.zoneDisplayName}，${result.input.offsetText}）的 ${result.input.date} ${result.input.time}，换算时刻 ${formatTime(result.convertedAt)}；参与换算的档案 ${result.zonesInScope} 条，与来源不同天的有 ${result.crossDayCount} 条，最大时差 ${Math.floor(result.maxDiffMinutes / 60)} 小时 ${result.maxDiffMinutes % 60} 分`;
+  el('convert-meta').textContent = `来源 ${result.input.zoneName}（${result.input.zoneDisplayName}，${result.input.offsetText}）的 ${result.input.date} ${result.input.time}，换算时刻 ${formatTime(result.convertedAt)}；参与换算的档案 ${result.zonesInScope} 条，其中可用 ${result.availableCount} 条、不可用 ${result.unavailableCount} 条；可用档案中与来源不同天的有 ${result.crossDayCount} 条，最大时差 ${Math.floor(result.maxDiffMinutes / 60)} 小时 ${result.maxDiffMinutes % 60} 分`;
+  const blocked = result.results.filter((item) => !item.available);
+  const blockedText = blocked.length
+    ? `；本次被边界卡住的档案：${blocked.map((item) => `${item.name}：${item.unavailableReason}`).join('、')}`
+    : '；本次没有档案被边界卡住';
+  el('convert-boundary').textContent = `${result.boundary.text}${blockedText}`;
   const body = el('convert-body');
-  body.innerHTML = result.results.map((item) => `<tr class="${item.isSource ? 'source-row' : ''}">
+  body.innerHTML = result.results.map((item) => {
+    if (!item.available) {
+      return `<tr class="unavailable-row${item.isSource ? ' source-row' : ''}">
+      <td class="mono">${escapeHtml(item.name)}</td>
+      <td>${escapeHtml(item.displayName)}</td>
+      <td class="mono">—</td>
+      <td class="mono">—</td>
+      <td>—</td>
+      <td>—</td>
+      <td class="mono">${escapeHtml(item.offsetText)}</td>
+      <td>—</td>
+      <td>${item.usesDst ? '有规则' : '—'}</td>
+      <td class="status-cell"><span class="tag na">不可用</span>${escapeHtml(item.unavailableReason)}</td>
+    </tr>`;
+    }
+    return `<tr class="${item.isSource ? 'source-row' : ''}">
       <td class="mono">${escapeHtml(item.name)}</td>
       <td>${escapeHtml(item.displayName)}</td>
       <td class="mono">${escapeHtml(item.localDate)}</td>
@@ -276,7 +296,9 @@ function renderConvert(result) {
       <td class="mono">${escapeHtml(item.offsetText)}</td>
       <td>${escapeHtml(item.diffText)}</td>
       <td>${item.usesDst ? '有规则' : '—'}</td>
-    </tr>`).join('');
+      <td class="status-cell"><span class="tag on">可用</span></td>
+    </tr>`;
+  }).join('');
   el('convert-empty').classList.toggle('hidden', result.results.length > 0);
 }
 

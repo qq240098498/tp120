@@ -110,6 +110,7 @@
         </div>
       </div>
       <p class="convert-meta" id="convert-meta">还没有换算过，填好日期、时刻与来源时区点右侧按钮</p>
+      <p class="convert-boundary" id="convert-boundary">换算边界按整数年份判定，不看具体月日：档案生效的第一年与停止实行夏令时的最后一年都算可用；落在边界外的档案会在结果里标成不可用并给出原因，其余档案照常换算</p>
       <div class="table-wrap">
         <table class="grid">
           <thead>
@@ -123,6 +124,7 @@
               <th>偏移</th>
               <th>与来源时区相差</th>
               <th>夏令时</th>
+              <th>换算状态</th>
             </tr>
           </thead>
           <tbody id="convert-body"></tbody>

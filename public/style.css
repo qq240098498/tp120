@@ -203,6 +203,12 @@ button.link.danger {
   font-size: 12.5px;
 }
 
+.convert-boundary {
+  margin: -4px 0 10px;
+  color: var(--ink-soft);
+  font-size: 12px;
+}
+
 .table-wrap {
   overflow-x: auto;
 }
@@ -259,6 +265,26 @@ td.actions {
 
 tr.source-row td {
   background: var(--accent-soft);
+}
+
+tr.unavailable-row td {
+  color: #9aa4b0;
+  background: #fafbfc;
+}
+
+td.status-cell {
+  min-width: 160px;
+  white-space: normal;
+  font-size: 12.5px;
+}
+
+td.status-cell .tag {
+  margin-right: 6px;
+}
+
+.tag.na {
+  background: #fdeeee;
+  color: var(--danger);
 }
 
 .tag {
